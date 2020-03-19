@@ -1,0 +1,117 @@
+version: "3"
+services:
+
+  node-service-node-dev:
+    build:
+      context: .
+      dockerfile: ./node/node.dockerfile
+    container_name: node-service-node-dev
+    restart: unless-stopped
+    working_dir: /var/www
+    ports:
+      - 3070:3000
+    tty: true
+    environment:
+      - NODE_ENV=
+    volumes:
+      - ./src/nodejs_main:/var/www
+    # command: npm run start:dev
+    command: npm start
+    networks:
+      - net-service-node-dev
+
+  node-service-laravel-dev:
+    build:
+      context: .
+      dockerfile: ./php/php-laravel.dockerfile
+    container_name: node-service-laravel-dev
+    restart: unless-stopped
+    tty: true
+    working_dir: /var/www
+    # ports:
+    #   - 3071:3001    
+    volumes:
+      - ./src/laravel_main:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    # command: php artisan queue:listen
+    networks:
+      - net-service-node-dev      
+
+  node-service-nest-dev:
+    build:
+      context: .
+      dockerfile: ./node/node.dockerfile
+    container_name: node-service-nest-dev
+    restart: unless-stopped
+    working_dir: /var/www
+    ports:
+      - 3072:3000
+    tty: true
+    environment:
+      - NODE_ENV=
+    volumes:
+      - ./src/nodejs_nest_service:/var/www
+    # command: npm run start:dev
+    command: npm start
+    networks:
+      - net-service-node-dev
+
+  nginx-service-node-dev:
+    image: nginx:alpine
+    container_name: nginx-service-node-dev
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 3000:443
+      - 3071:444
+   # depends_on:
+     # - node-service-laravel-dev
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+      - ./src/laravel_main:/var/www
+    networks:
+      - net-service-node-dev        
+
+  # redis-service-node-dev:
+  #   image: redis:latest
+  #   container_name: redis-service-node-dev
+  #   tty: true
+  #   command: ["redis-server", "--appendonly", "yes"]
+  #   volumes:
+  #     - ./redis-data:/data
+  #   expose:
+  #     - 6379
+  #   restart: unless-stopped
+  #   networks:
+  #     - net-service-node-dev       
+
+  rabbitmq-service-node-dev:
+    image: rabbitmq:management
+    container_name: node-service-rabbitmq-dev
+    tty: true    
+    expose:
+      - 5672  
+    ports:
+      - 3333:15672    
+    volumes:
+      - ./rabbitmq-data:/var/lib/rabbitmq/mnesia/rabbit@app-rabbitmq:cached
+    environment:
+      RABBITMQ_ERLANG_COOKIE: 6085e2412b6fa88647466c6a81c0cea0
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+      RABBITMQ_DEFAULT_VHOST: /
+    restart: unless-stopped      
+    networks:
+      - net-service-node-dev       
+
+#Docker Networks
+networks:
+  net-service-node-dev:
+    driver: bridge
+
+#Volumes
+volumes:
+  postgres-data:
+    driver: local
